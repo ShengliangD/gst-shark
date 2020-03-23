@@ -130,13 +130,7 @@ log_latency (GstInterLatencyTracer * interlatency_tracer,
   src = g_strdup_printf ("%s_%s", GST_DEBUG_PAD_NAME (src_pad));
   sink = g_strdup_printf ("%s_%s", GST_DEBUG_PAD_NAME (sink_pad));
 
-  GstElement *elem = get_real_pad_parent(sink_pad);
-  gchar *name = gst_element_get_name(elem);
-  if (g_strcmp(name, "timeoverlayparse")) {
-    time = GST_CLOCK_DIFF (src_ts, sink_ts);
-  } else {
-    g_object_get (elem, "current-record", &time, NULL);
-  }
+  time = GST_CLOCK_DIFF (src_ts, sink_ts);
 
   time_string = g_string_new ("");
   g_string_printf (time_string, "%" GST_TIME_FORMAT, GST_TIME_ARGS (time));
@@ -155,6 +149,35 @@ log_latency (GstInterLatencyTracer * interlatency_tracer,
   g_string_free (time_string, TRUE);
   g_free (src);
   g_free (sink);
+}
+
+static void
+log_latency_e2e (GstInterLatencyTracer * interlatency_tracer,
+    GstPad * sink_pad, guint64 sink_ts)
+{
+  gchar *src = "start", *sink= "end";
+  guint64 time;
+  GString *time_string = NULL;
+
+  GstElement *elem = get_real_pad_parent(sink_pad);
+  gchar *name = gst_element_get_name(elem);
+  g_object_get (elem, "current-record", &time, NULL);
+
+  time_string = g_string_new ("");
+  g_string_printf (time_string, "%" GST_TIME_FORMAT, GST_TIME_ARGS (time));
+
+#ifdef GST_STABLE_RELEASE
+  gst_tracer_record_log (tr_interlatency, src, sink, time_string->str);
+#else
+  /* TODO(ensonic): report format is still unstable */
+  gst_tracer_log_trace (gst_structure_new ("interlatency",
+          "from_pad", G_TYPE_STRING, src,
+          "to_pad", G_TYPE_STRING, sink,
+          "time", G_TYPE_STRING, time_string->str, NULL));
+#endif
+  do_print_interlatency_event (INTERLATENCY_EVENT_ID, src, sink, time);
+
+  g_string_free (time_string, TRUE);
 }
 
 static void
@@ -179,6 +202,9 @@ calculate_latency (GstInterLatencyTracer * interlatency_tracer,
 
     if (GST_IS_EVENT (ev))
       log_latency (interlatency_tracer, gst_event_get_structure (ev), pad, ts);
+    else if (g_strcmp0(gst_element_get_name(get_real_pad_parent(pad)), "timeoverlayparse0") == 0) {
+      log_latency_e2e(interlatency_tracer, pad, ts);
+    }
   }
 }
 
