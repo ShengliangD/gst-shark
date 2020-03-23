@@ -130,7 +130,13 @@ log_latency (GstInterLatencyTracer * interlatency_tracer,
   src = g_strdup_printf ("%s_%s", GST_DEBUG_PAD_NAME (src_pad));
   sink = g_strdup_printf ("%s_%s", GST_DEBUG_PAD_NAME (sink_pad));
 
-  time = GST_CLOCK_DIFF (src_ts, sink_ts);
+  GstElement *elem = get_real_pad_parent(sink_pad);
+  gchar *name = gst_element_get_name(elem);
+  if (g_strcmp(name, "timeoverlayparse")) {
+    time = GST_CLOCK_DIFF (src_ts, sink_ts);
+  } else {
+    g_object_get (elem, "current-record", &time, NULL);
+  }
 
   time_string = g_string_new ("");
   g_string_printf (time_string, "%" GST_TIME_FORMAT, GST_TIME_ARGS (time));
