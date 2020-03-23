@@ -155,7 +155,7 @@ static void
 log_latency_e2e (GstInterLatencyTracer * interlatency_tracer,
     GstPad * sink_pad, guint64 sink_ts)
 {
-  gchar *src = "start", *sink= "end";
+  gchar *src = "timestampoverlay", *sink= "timeoverlayparse";
   guint64 time;
   GString *time_string = NULL;
 
@@ -202,7 +202,9 @@ calculate_latency (GstInterLatencyTracer * interlatency_tracer,
 
     if (GST_IS_EVENT (ev))
       log_latency (interlatency_tracer, gst_event_get_structure (ev), pad, ts);
-    else if (g_strcmp0(gst_element_get_name(get_real_pad_parent(pad)), "timeoverlayparse0") == 0) {
+    else if (g_strcmp0(
+                gst_element_get_name(get_real_pad_parent(pad)),
+                "timeoverlayparse0") == 0) {  // TODO: this is a temporary solution
       log_latency_e2e(interlatency_tracer, pad, ts);
     }
   }
